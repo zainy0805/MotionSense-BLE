@@ -17,6 +17,7 @@ static const struct device *i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c0));
 #define REG_CTRL3_C        0x12   /* BDU, IF_INC      */
 #define REG_OUTX_L_G       0x22   /* gyro: 6 bytes from here  */
 #define REG_OUTX_L_XL      0x28   /* accel: 6 bytes from here */
+#define REG_OUT_TEMP_L     0x20   /* temp: 2 bytes from here  */
 
 /* ODR=104 Hz (0100), FS=+-2g (00), BW default (00) -> 0x40 */
 #define CTRL1_XL_104HZ_2G  0x40
@@ -29,6 +30,9 @@ static const struct device *i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c0));
 #define ACCEL_SENS_G_PER_LSB   0.000061  /* g per LSB at +-2g   */
 #define GYRO_SENS_DPS_PER_LSB  0.00875   /* dps per LSB at 245  */
 
+#define TEMP_LSB_PER_DEGC      256.0     /* LSB per deg C, 0 LSB @ 25 C */
+#define TEMP_OFFSET_DEGC       25.0
+
 static int16_t to_s16(uint8_t lo, uint8_t hi)
 {
 	return (int16_t)((hi << 8) | lo);
@@ -36,7 +40,7 @@ static int16_t to_s16(uint8_t lo, uint8_t hi)
 
 int main(void)
 {
-	uint8_t who = 0, buf[6];
+	uint8_t who = 0, buf[6], tbuf[2];
 	int ret;
 
 	if (!device_is_ready(i2c_dev)) {
@@ -57,9 +61,9 @@ int main(void)
 		return 0;
 	}
 
-	i2c_reg_write_byte(i2c_dev, LSM6DS3_ADDR, REG_CTRL1_XL, CTRL1_XL_104HZ_2G);
-	i2c_reg_write_byte(i2c_dev, LSM6DS3_ADDR, REG_CTRL2_G, CTRL2_G_104HZ_245DPS);
-	i2c_reg_write_byte(i2c_dev, LSM6DS3_ADDR, REG_CTRL3_C, CTRL3_C_BDU_IFINC);
+	ret = i2c_reg_write_byte(i2c_dev, LSM6DS3_ADDR, REG_CTRL1_XL, CTRL1_XL_104HZ_2G);
+	ret = i2c_reg_write_byte(i2c_dev, LSM6DS3_ADDR, REG_CTRL2_G, CTRL2_G_104HZ_245DPS);
+	ret = i2c_reg_write_byte(i2c_dev, LSM6DS3_ADDR, REG_CTRL3_C, CTRL3_C_BDU_IFINC);
 
 	while (1) {
 		char out_str[96];
@@ -75,7 +79,8 @@ int main(void)
 
 			sprintf(out_str, "gyro x:%.3f dps y:%.3f dps z:%.3f dps", gx, gy, gz);
 			printk("%s\n", out_str);
-		} else {
+		} 
+		else {
 			printk("gyro read failed: %d\n", ret);
 		}
 
@@ -88,8 +93,22 @@ int main(void)
 
 			sprintf(out_str, "accel x:%.3f m/s2 y:%.3f m/s2 z:%.3f m/s2", ax, ay, az);
 			printk("%s\n", out_str);
-		} else {
+		} 
+		else {
 			printk("accel read failed: %d\n", ret);
+		}
+
+		/* temp: 2 bytes starting at OUT_TEMP_L */
+		ret = i2c_burst_read(i2c_dev, LSM6DS3_ADDR, REG_OUT_TEMP_L, tbuf, 2);
+		if (ret == 0) {
+			double temp_c = TEMP_OFFSET_DEGC +
+					(to_s16(tbuf[0], tbuf[1]) / TEMP_LSB_PER_DEGC);
+
+			sprintf(out_str, "temp: %.2f C", temp_c);
+			printk("%s\n", out_str);
+		}
+		else {
+			printk("Temp read failed: %d\n", ret);
 		}
 
 		gpio_pin_set_dt(&led_green, 0);   /* LED off until next cycle */
