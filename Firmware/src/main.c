@@ -2,9 +2,9 @@
  * ============================================================================
  * File Name   : main.c
  * Author      : 
- * Created On  : DD-MM-YYYY
+ * Created On  : 28-08-2026
  * Description : Entry point. Wires up devicetree handles for the IMU module
- *               and drives the IDLE/MOVING poll loop.
+ *               and drives the IDLE/MOVING/WALKING poll loop.
  * ============================================================================
  */
 
