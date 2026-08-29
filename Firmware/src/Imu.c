@@ -115,6 +115,14 @@ static bool imu_isMoving(double ax, double ay, double az)
 
 /* ---------------------------- Function Definitions -------------------------- */
 
+/**
+ * @brief   Probes the LSM6DS3TR-C over I2C (WHO_AM_I) and configures the
+ *          accel/gyro ODR and BDU/IF_INC. Initializes imu->state to
+ *          IMU_STATE_IDLE.
+ * @param   imu  Pointer to a handle with i2cDev/ledGreen already set.
+ * @return  0 on success, -1 on failure (NULL pointer, device not ready, or
+ *          WHO_AM_I mismatch).
+ */
 int Imu_Init(ImuHandleType *imu)
 {
     uint8_t who = 0;
@@ -159,6 +167,13 @@ int Imu_Init(ImuHandleType *imu)
     return 0;
 }
 
+/**
+ * @brief   Runs one iteration of the IDLE/MOVING state machine: reads accel
+ *          to check for motion, and while MOVING also reads gyro/temp and
+ *          prints a full sample. Updates imu->state as needed.
+ * @param   imu  Pointer to an initialized handle.
+ * @return  0 on success, -1 on I2C failure or NULL pointer.
+ */
 int Imu_Update(ImuHandleType *imu)
 {
     double ax, ay, az;
@@ -220,6 +235,12 @@ int Imu_Update(ImuHandleType *imu)
     return 0;
 }
 
+/**
+ * @brief   Returns how long the caller should sleep before the next
+ *          Imu_Update() call, based on the current state.
+ * @param   imu  Pointer to an initialized handle.
+ * @return  Milliseconds to sleep (IMU_IDLE_POLL_MS or IMU_MOVING_POLL_MS).
+ */
 uint32_t Imu_GetPollIntervalMs(const ImuHandleType *imu)
 {
     if (imu == NULL)
@@ -230,6 +251,13 @@ uint32_t Imu_GetPollIntervalMs(const ImuHandleType *imu)
     return (imu->state == IMU_STATE_IDLE) ? IMU_IDLE_POLL_MS : IMU_MOVING_POLL_MS;
 }
 
+
+/**
+ * @brief   Releases any resources owned by the handle (turns the LED off).
+ *          Provided for symmetry with Imu_Init.
+ * @param   imu  Pointer to the handle to clean up.
+ * @return  void
+ */
 void Imu_Cleanup(ImuHandleType *imu)
 {
     if (imu == NULL)
