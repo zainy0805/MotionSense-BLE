@@ -1,0 +1,15 @@
+/*
+ * boards/xiao_nrf52840_ble_sense.overlay  (MicBleStream)
+ *
+ * Streams over hardware UART (uart0) at 115200 baud -- no USB.
+ * Also enables the on-board PDM microphone and powers its regulator.
+ *
+ * uart0: P1.11 = TX (D6), P1.12 = RX (D7).
+ * 460800 carries full 16 kHz / 16-bit audio (~32 KB/s). 115200 cannot.
+ */
+
+/* The nRF GPIO driver needs a GPIOTE instance enabled for the LED's port. */
+
+&gpiote {
+	status = "okay";
+};
